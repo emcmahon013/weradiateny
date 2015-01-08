@@ -20,7 +20,6 @@ for i in range(n):
 	else:
 		avgs=(temp.loc[i]['sensor']+temp.loc[i-1]['sensor'])/2
 		avga=(temp.loc[i]['ambient']+temp.loc[i-1]['ambient'])/2
-	print(sensor)
 	if sensor>=10 and sensor<=45:
 		phase='Mesophillic'
 	elif sensor>45 and sensor<=70:
