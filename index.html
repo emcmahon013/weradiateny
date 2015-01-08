@@ -1,8 +1,28 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
+<title>tempvis</title>
 <style> /* set the CSS */
 
-body { font: 12px Arial;}
+body {
+  padding:50px;
+  font:14px/1.5 Lato, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color:#777;
+  font-weight:300;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color:#222;
+  margin:0 0 20px;
+}
+
+h1, h2, h3 {
+  line-height:1.1;
+}
+
+header {
+  width:270px;
+  float:left;
+}
 
 path { 
     stroke-width: 2;
@@ -35,7 +55,7 @@ path {
 
 </style>
 <body>
-
+<header><h1>Sensor Data</h1></header>
 <!-- load the d3.js library -->    
 <script src="http://d3js.org/d3.v3.min.js"></script>
 
@@ -55,7 +75,7 @@ function make_y_axis() {
 }
 
 // Set the dimensions of the canvas / graph
-var margin = {top: 30, right: 20, bottom: 30, left: 50},
+var margin = {top: 30, right: 150, bottom: 30, left: 30},
     width = 960 - margin.left - margin.right,
     height = 500 - margin.top - margin.bottom;
 
@@ -64,9 +84,13 @@ var parseDate = d3.time.format("%m/%d/%y %H:%M").parse;
     formatDate= d3.time.format("%H:%M")
     bisectDate = d3.bisector(function(d) { return d.date; }).left; // **
 
+
+
 // Set the ranges
 var x = d3.time.scale().range([0, width]);
 var y = d3.scale.linear().range([height, 0]);
+var ymin=37;
+var ymax=55;
 
 // Define the axes
 var xAxis = d3.svg.axis().scale(x)
@@ -78,11 +102,12 @@ var yAxis = d3.svg.axis().scale(y)
 // Define the line
 var valueline = d3.svg.line()
     .x(function(d) { return x(d.date); })
-    .y(function(d) { return y(d.avgs); });
+    .y(function(d) { return y(d.avgs); })
+    .interpolate("cardinal");
 
 var color = d3.scale.ordinal()
                 .domain(['Mesophillic','Thermophillic','Out of Range'])
-                .range(["steelblue","red","gray"]);
+                .range(["#6186A7","#F38A68","#A1ADB7"]);
 
 // Adds the svg canvas
 var svg = d3.select("body")
@@ -98,6 +123,8 @@ var lineSvg = svg.append("g")
                 .selectAll("line");
                                              // **********
 
+var line = svg.append("g");
+
 var focus = svg.append("g")                                // **********
     .style("display", "none");                             // **********
 
@@ -105,19 +132,25 @@ var focus = svg.append("g")                                // **********
 d3.csv("https://gist.githubusercontent.com/emcmahon013/aa1b2a89e5c11b2a21a0/raw/f2b553737d3772a206dd3b280366c61d301a141c/temp.csv", function(error, data) {                 // **********
     data.forEach(function(d) {
         d.date = parseDate(d.date);
-        d.phase= +d.phase;
+        d.phase= d.phase;
         d.avgs = +d.avgs;
 
     });
 
     // Scale the range of the data
     x.domain(d3.extent(data, function(d) { return d.date; }));
-    y.domain([40, d3.max(data, function(d) { return d.sensor; })]);
+    y.domain([ymin, ymax]);
+
+    lineSvg.append("path")                                 // **********
+        .attr("class", "line")
+        .attr("d", valueline(data))
+        .attr("stroke","black")
+        .attr("stroke-width",10);
 
     // Add the valueline path.
     lineSvg = lineSvg.data(data);
-    lines.enter().append("line");
-    lines.each(function(d,i) {
+    lineSvg.enter().append("line");
+    lineSvg.each(function(d,i) {
         var value=d;
         var next=i+1;
         var nextValue=data[i+1]
@@ -128,22 +161,38 @@ d3.csv("https://gist.githubusercontent.com/emcmahon013/aa1b2a89e5c11b2a21a0/raw/
         d3.select(this)
             .attr(
                 {x1:x(value.date),
-                y1:y(value.avgs),
-                x2:x(next.date),
+                y1:y(45),
+                x2:x(nextValue.date),
                 y2:y(nextValue.avgs)})
-            .style("stroke",color(value.phase));
+            .style("stroke",color(value.phase))
+            .style("stroke-width",1);
     });
 
-//     lineSvg.append("path")                                 // **********
-//         .attr("class", "line")
-//         .attr("d", valueline(data))
-//         .attr("stroke",function(data){return colorblock();})
-//         .attr("stroke-width",2);
+    line.append("path")
+        .attr("class","line")
+        .attr("d",valueline(data))
+        .attr("stroke","black")
+        .attr("stroke-width",20);
 
-// function colorblock() {
-//     d=data[310];
-//     return d.phase;
-// }
+    svg.append("line")
+        .attr("x1",0)
+        .attr("x2",width)
+        .attr("y1",y(45))
+        .attr("y2",y(45))
+        .attr("stroke","black")
+        .attr("stroke-width",1);
+        
+    svg.append("text")
+            .attr("x",0)
+            .attr("y",y(45))
+            .attr("dy","-.5em")
+            .text("Thermophillic");
+    
+    svg.append("text")
+            .attr("x",20)
+            .attr("y",y(45))
+            .attr("dy","1em")
+            .text("Mesophillic");
 
     // Add the X Axis
     svg.append("g")
@@ -162,37 +211,37 @@ d3.csv("https://gist.githubusercontent.com/emcmahon013/aa1b2a89e5c11b2a21a0/raw/
            .style("text-anchor","end")
            .text("Temperature (C)");
 
-  svg.append("g")         
-        .attr("class", "grid")
-        .attr("opacity",.5)
-        .attr("transform", "translate(0," + height + ")")
-        .call(make_x_axis()
-            .tickSize(-height, 0, 0)
-            .tickFormat("")
-        )
-    svg.append("g")         
-        .attr("class", "grid")
-        .attr("opacity",.5)
-        .call(make_y_axis()
-            .tickSize(-width, 0, 0)
-            .tickFormat("")
-        )
+  // svg.append("g")         
+  //       .attr("class", "grid")
+  //       .attr("opacity",.5)
+  //       .attr("transform", "translate(0," + height + ")")
+  //       .call(make_x_axis()
+  //           .tickSize(-height, 0, 0)
+  //           .tickFormat("")
+  //       )
+  //   svg.append("g")         
+  //       .attr("class", "grid")
+  //       .attr("opacity",.5)
+  //       .call(make_y_axis()
+  //           .tickSize(-width, 0, 0)
+  //           .tickFormat("")
+  //       )
 
-    focus.append("line")
-        .attr("class","x")
-        .style("stroke","blue")
-        .style("stroke-dasharray","3,3")
-        .style("opacity",0.5)
-        .attr("y1",0)
-        .attr("y2",height);
+    // focus.append("line")
+    //     .attr("class","x")
+    //     .style("stroke","blue")
+    //     .style("stroke-dasharray","3,3")
+    //     .style("opacity",0.5)
+    //     .attr("y1",0)
+    //     .attr("y2",height+margin.top);
 
-    focus.append("line")
-        .attr("class","y")
-        .style("stroke","blue")
-        .style("stroke-dasharray","3,3")
-        .style("opacity",0.5)
-        .attr("x1",width)
-        .attr("x2",width);
+    // focus.append("line")
+    //     .attr("class","y")
+    //     .style("stroke","blue")
+    //     .style("stroke-dasharray","3,3")
+    //     .style("opacity",0.5)
+    //     .attr("x1",width+margin.right)
+    //     .attr("x2",width+margin.right);
 
     // append the circle at the intersection               // **********
     focus.append("circle")                                 // **********
@@ -205,31 +254,39 @@ d3.csv("https://gist.githubusercontent.com/emcmahon013/aa1b2a89e5c11b2a21a0/raw/
         .attr("class","y1")
         .style("stroke","white")
         .style("stroke-width","3.5px")
-        .style("opacity",.8)
+        .style("opacity",1)
         .attr("dx",8)
         .attr("dy","-.3em")
     focus.append("text")
         .attr("class","y2")
+        .style("opacity",1)
         .attr("dx",8)
         .attr("dy","-.3em")
 
-    focus.append("text")
-        .attr("class","y3")
-        .style("stroke","white")
-        .style("stroke-width","3.5px")
-        .style("opacity",0.8)
+    focus.append("rect")
+        .attr("class","y2")
+        .attr("fill","white")
+        .style("opacity",.8)
         .attr("dx",8)
-        .attr("dy","1em");
-    focus.append("text")
-        .attr("class","y4")
-        .attr("dx",8)
-        .attr("dy","1em");
+        .attr("dy","-.3em")
+
+    // focus.append("text")
+    //     .attr("class","y3")
+    //     .style("stroke","white")
+    //     .style("stroke-width","3.5px")
+    //     .style("opacity",1)
+    //     .attr("dx",8)
+    //     .attr("dy","1em");
+    // focus.append("text")
+    //     .attr("class","y4")
+    //     .attr("dx",8)
+    //     .attr("dy","1em");
 
     // append the rectangle to capture mouse               // **********
     svg.append("rect")                                     // **********
         .attr("width", width)                              // **********
         .attr("height", height)                            // **********
-        .style("fill", "rgb(235,235,209)")
+        .style("fill", "none")
         .style("opacity",.4)                             // **********
         .style("pointer-events", "all")                    // **********
         .on("mouseover", function() { focus.style("display", null); })
@@ -247,17 +304,20 @@ d3.csv("https://gist.githubusercontent.com/emcmahon013/aa1b2a89e5c11b2a21a0/raw/
             .attr("transform",                             // **********
                   "translate(" + x(d.date) + "," +         // **********
                                  y(d.avgs) + ")");
-        focus.select("text.y1")
-            .attr("transform",
-                "translate("+x(d.date)+","+
-                            y(d.avgs)+")")
-            .text(d.avgs);
+        // focus.select("text.y1")
+        //     .attr("transform",
+        //         "translate("+x(d.date)+","+
+        //                     y(d.avgs)+")")
+        //     .attr("fill","white")
+        //     .text(d.avgs);
 
         focus.select("text.y2")
             .attr("transform",
                     "translate("+x(d.date)+","+
                                 y(d.avgs)+")")
-            .text(d.avgs).attr("fill",d.phase);
+            .attr("fill","white")
+            .text(formatDate(d.date)+", "+d3.round(d.avgs,1))
+                .attr("fill","black");
 
         // focus.select(".x")
         //     .attr("transform",
@@ -275,4 +335,5 @@ d3.csv("https://gist.githubusercontent.com/emcmahon013/aa1b2a89e5c11b2a21a0/raw/
 });
 
 </script>
+<p>Text down here</p>
 </body>
