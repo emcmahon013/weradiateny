@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<!--have to wait until this is pulling from repo to check -->
+<?php
+$command=escapeshellcmd('/datavis/date.py');
+$output=shell_exec($command);
+echo $output;
+?>
+<title>temp-vis</title>
+<style> /* set the CSS */
+
+body {
+  padding:50px;
+  font:14px/1.5 Lato, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color:#777;
+  font-weight:300;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color:#222;
+  margin:0 0 20px;
+}
+
+h1, h2, h3 {
+  line-height:1.1;
+}
+
+header {
+  width:270px;
+  float:left;
+}
+
+path { 
+    stroke-width: 2;
+    fill: none;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: grey;
+    stroke-width: 1;
+    shape-rendering: crispEdges;
+}
+
+.x.axis path {
+  display: none;
+}
+/*.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}*/
+.grid .tick {
+    stroke: lightgrey;
+    opacity: 0.7;
+}
+.grid path {
+      stroke-width: 0;
+}
+
+</style>
+<body>
+<header><h1>Sensor Data</h1></header>
+<!-- load the d3.js library -->    
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.3.11/d3.min.js"></script>
+
+<script>
+
+function make_x_axis() {        
+    return d3.svg.axis()
+        .scale(x)
+         .orient("bottom")
+         .ticks(20)
+}
+function make_y_axis() {        
+    return d3.svg.axis()
+        .scale(y)
+        .orient("left")
+        .ticks(20)
+}
+
+// Set the dimensions of the canvas / graph
+var margin = {top: 30, right: 150, bottom: 30, left: 50},
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+// Parse the date / time
+var parseDate = d3.time.format("%m/%d/%y %H:%M").parse;
+    formatDate= d3.time.format("%H:%M");
+    bisectDate = d3.bisector(function(d) { return d.date; }).left;
+
+
+
+// Set the ranges
+var x = d3.time.scale().range([0, width]);
+var y = d3.scale.linear().range([height, 0]);
+
+// Define the axes
+var xAxis = d3.svg.axis().scale(x)
+    .orient("bottom").ticks(10);
+
+var yAxis = d3.svg.axis().scale(y)
+    .orient("left").ticks(10);
+
+// Define the line
+var valueline = d3.svg.line()
+    .x(function(d) { return x(d.date); })
+    .y(function(d) { return y(d.avgs); })
+    .interpolate("cardinal");
+
+// Define color
+var color = d3.scale.ordinal()
+                .domain(['Mesophillic','Thermophillic','Out of Range'])
+                .range(["#6186A7","#F38A68","#A1ADB7"]);
+
+// Adds the svg canvas
+var svg = d3.select("body")
+    .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+        .attr("transform", 
+              "translate(" + margin.left + "," + margin.top + ")");
+
+// Adds main line
+var lineSvg = svg.append("g")
+                .attr("class","plot")
+                .selectAll("line");
+                                            
+// Adds area lines
+var line = svg.append("g");
+
+// Adds tooltip
+var focus = svg.append("g")                                
+    .style("display", "none");                            
+
+    // Adds meso-thermo line
+    svg.append("line")
+        .attr("x1",0)
+        .attr("x2",width)
+        .attr("y1",y(45))
+        .attr("y2",y(45))
+        .attr("stroke","black")
+        .attr("stroke-width",1);
+        
+    svg.append("text")
+            .attr("x",0)
+            .attr("y",y(45))
+            .attr("dy","-.5em")
+            .text("Thermophillic");
+    
+    svg.append("text")
+            .attr("x",20)
+            .attr("y",y(45))
+            .attr("dy","1em")
+            .text("Mesophillic");
+
+// Get the data
+d3.csv("/weradiateny/temp.csv", function(error, data) {                 
+    data.forEach(function(d) {
+        d.date = parseDate(d.date);
+        d.phase= d.phase;
+        d.avgs = +d.avgs;
+
+    });
+
+    // Scale the range of the data
+    x.domain(d3.extent(data, function(d) { return d.date; }));
+    y.domain(d3.extent(data, function(d) {return d.avgs;}));
+
+    // Add the area lines
+    lineSvg = lineSvg.data(data);
+    lineSvg.enter().append("line");
+    lineSvg.each(function(d,i) {
+        var value=d;
+        var next=i+1;
+        var nextValue=data[i+1]
+        if (isNaN(nextValue)) {
+            next=i;
+            nextValue=value;
+        }
+        d3.select(this)
+            .attr(
+                {x1:x(value.date),
+                y1:y(45),
+                x2:x(nextValue.date),
+                y2:y(nextValue.avgs)})
+            .style("stroke",color(value.phase))
+            .style("stroke-width",1);
+    });
+
+    //Adds the main line
+    line.append("path")
+        .attr("class","line")
+        .attr("d",valueline(data))
+        .attr("stroke","black")
+        .attr("stroke-width",20);
+
+    // append the circle at the intersection               
+    focus.append("circle")                                 
+        .attr("class", "y")                                
+        .style("fill", "none")                            
+        .style("stroke", "blue")                           
+        .attr("r", 4);                                     
+    //appends text with circle
+    focus.append("text")
+        .attr("class","y2")
+        .style("opacity",1)
+        .attr("dx","-2em")
+        .attr("dy","-1em")
+
+    //not working
+    // focus.append("rect")
+    //     .attr("class","y2")
+    //     .attr("fill","white")
+    //     .style("opacity",.8)
+    //     .attr("dx",8)
+    //     .attr("dy","-.3em")
+
+        // Add the X Axis
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis);
+
+    // Add the Y Axis
+    svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+        .append("text")
+           .attr("transform","rotate(-90)")
+           .attr("y",6)
+           .attr("dy","-3em")
+           .style("text-anchor","end")
+           .text("Temperature (C)");
+
+    // append the rectangle to capture mouse               
+    svg.append("rect")                                     
+        .attr("width", width)                              
+        .attr("height", height)                            
+        .style("fill", "none")
+        .style("opacity",.4)                             
+        .style("pointer-events", "all")                    
+        .on("mouseover", function() { focus.style("display", null); })
+        .on("mouseout", function() { focus.style("display", "none"); })
+        .on("mousemove", mousemove);                      
+
+    function mousemove() {                                 
+        var x0 = x.invert(d3.mouse(this)[0]),              
+            i = bisectDate(data, x0, 1),                   
+            d0 = data[i - 1],                              
+            d1 = data[i],                                  
+            d = x0 - d0.date > d1.date - x0 ? d1 : d0;     
+
+        focus.select("circle.y")                          
+            .attr("transform",                             
+                  "translate(" + x(d.date) + "," +         
+                                 y(d.avgs) + ")");
+
+        focus.select("text.y2")
+            .attr("transform",
+                    "translate("+x(d.date)+","+
+                                y(d.avgs)+")")
+            .attr("fill","white")
+            .text(formatDate(d.date)+", "+d3.round(d.avgs,1))
+                .attr("fill","black");
+
+    }                                                     
+
+});
+
+</script>
+<p><a href="http://www.awesomefoundation.org/en/projects/27506-we-radiate">WeRadiateNY</a> is a startup dedicated to maximizing energy output from small-scale composting units.  While the long-term goal is to use compost for heating units, the current priority is to understand the factors affecting composting efficiency.  To this end, WeRadiate has created temperature sensors to be placed within compost to monitor conditions in real-time.  By experimenting with placement of sensors, size of composting units, and composition of the compost over time, WeRadiate can identify and monitor the key factors for effective composting.</p>
+</body>
