@@ -157,7 +157,7 @@ var focus = svg.append("g")
             .text("Mesophillic");
 
 // Get the data
-d3.csv("/weradiateny/temp.csv", function(error, data) {                 
+d3.csv("/weradiateny/tempPy.csv", function(error, data) {                 
     data.forEach(function(d) {
         d.date = parseDate(d.date);
         d.phase= d.phase;
