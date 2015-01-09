@@ -225,7 +225,8 @@ d3.csv("/weradiateny/data/tempPy.csv", function(error, data) {
            .style("text-anchor","end")
            .text("Temperature (C)");
 
-    svg.append("text")
+    svg.append("g")
+            .attr("class","text")
             .attr("x",0)
             .attr("y",y(45))
             .attr("dy","-.5em")
