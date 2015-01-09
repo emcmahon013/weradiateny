@@ -2,7 +2,7 @@
 <meta charset="utf-8">
 <!--have to wait until this is pulling from repo to check -->
 <?php
-$command=escapeshellcmd('/datavis/date.py');
+$command=escapeshellcmd('/weradiateny/data/date.py');
 $output=shell_exec($command);
 echo $output;
 ?>
@@ -157,7 +157,7 @@ var focus = svg.append("g")
             .text("Mesophillic");
 
 // Get the data
-d3.csv("/weradiateny/tempPy.csv", function(error, data) {                 
+d3.csv("/weradiateny/data/tempPy.csv", function(error, data) {                 
     data.forEach(function(d) {
         d.date = parseDate(d.date);
         d.phase= d.phase;
