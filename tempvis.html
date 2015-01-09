@@ -144,17 +144,7 @@ var focus = svg.append("g")
         .attr("stroke","black")
         .attr("stroke-width",1);
         
-    svg.append("text")
-            .attr("x",0)
-            .attr("y",y(45))
-            .attr("dy","-.5em")
-            .text("Thermophillic");
-    
-    svg.append("text")
-            .attr("x",20)
-            .attr("y",y(45))
-            .attr("dy","1em")
-            .text("Mesophillic");
+
 
 // Get the data
 d3.csv("/weradiateny/data/tempPy.csv", function(error, data) {                 
@@ -235,6 +225,18 @@ d3.csv("/weradiateny/data/tempPy.csv", function(error, data) {
            .style("text-anchor","end")
            .text("Temperature (C)");
 
+    svg.append("text")
+            .attr("x",0)
+            .attr("y",y(45))
+            .attr("dy","-.5em")
+            .text("Thermophillic");
+    
+    svg.append("text")
+            .attr("x",20)
+            .attr("y",y(45))
+            .attr("dy","1em")
+            .text("Mesophillic");
+            
     // append the rectangle to capture mouse               
     svg.append("rect")                                     
         .attr("width", width)                              
